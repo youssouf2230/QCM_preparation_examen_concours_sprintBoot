@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz Spring Boot</title>
+<style>
+  /* Reset simple et base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 700px;
+    margin: 2rem auto;
+    background-color: #f9fafb; 
+    color: #333;
+    padding: 1rem;
+  }
+
+  /* Boutons de filtre catégorie */
+  #categoryButtons {
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  #categoryButtons button {
+    background-color: #007bff;
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    margin: 0 5px 10px;
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  #categoryButtons button:hover,
+  #categoryButtons button.active {
+    background-color: #0056b3;
+  }
+
+  /* Question et catégorie */
+  #questionNumber {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #555;
+  }
+  #categoryInfo {
+    font-style: italic;
+    margin-top: 5px;
+    color: #888;
+  }
+
+  /* Texte de la question */
+  #questionText {
+    font-size: 1.25rem;
+    margin: 20px 0 15px;
+    line-height: 1.4;
+  }
+
+  /* Conteneur des options */
+  #optionsContainer {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Option individuelle */
+  .option {
+    cursor: pointer;
+    padding: 12px 16px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+  }
+  .option:hover {
+    border-color: #007bff;
+    background-color: #e7f1ff;
+  }
+  .option.selected {
+    border-color: #007bff;
+    background-color: #cce5ff;
+    font-weight: 600;
+  }
+
+  /* Lettre option */
+  .option-letter {
+    font-weight: 700;
+    font-size: 1.1rem;
+    min-width: 24px;
+    text-align: center;
+    color: #007bff;
+  }
+  .option-text {
+    flex-grow: 1;
+  }
+
+  /* Feedback question */
+  .question-feedback {
+    margin-top: 15px;
+    font-weight: 600;
+    font-size: 1rem;
+    min-height: 24px;
+    transition: opacity 0.3s ease;
+  }
+  .question-feedback.correct {
+    color: #2a9d8f;
+  }
+  .question-feedback.incorrect {
+    color: #e63946;
+  }
+
+  /* Boutons navigation */
+  #prevBtn, #nextBtn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    font-size: 1rem;
+    border-radius: 6px;
+    margin: 20px 10px 0 0;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  #prevBtn[disabled], #nextBtn[disabled] {
+    background-color: #a0aec0;
+    cursor: not-allowed;
+  }
+  #prevBtn:hover:not([disabled]),
+  #nextBtn:hover:not([disabled]) {
+    background-color: #0056b3;
+  }
+
+  /* Barre de progression */
+  #progressBar {
+    height: 12px;
+    background: linear-gradient(90deg, #007bff 0%, #00c6ff 100%);
+    width: 0%;
+    border-radius: 6px;
+    transition: width 0.4s ease;
+    margin-top: 30px;
+  }
+
+  #progressText {
+    text-align: center;
+    margin-top: 8px;
+    font-weight: 600;
+    color: #555;
+  }
+
+  /* Résultats */
+  #resultsContainer {
+    text-align: center;
+    padding: 20px;
+  }
+  #scorePercentage {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2a9d8f;
+  }
+  #scoreFraction {
+    font-size: 1.2rem;
+    margin-top: 10px;
+    color: #555;
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    body {
+      padding: 0.5rem;
+      max-width: 100%;
+    }
+    #questionText {
+      font-size: 1.1rem;
+    }
+    .option {
+      padding: 10px 12px;
+    }
+  }
+</style>
+
+</head>
+<body>
+  <h1>Quiz Interactif</h1>
+  <p>Prépare ton examen Spring Boot - QCM</p>
+
+  <div id="categoryButtons">
+    <button onclick="filterCategory('toutes')">Toutes</button>
+    <button onclick="filterCategory('facile')">Facile</button>
+    <button onclick="filterCategory('intermédiaire')">Intermédiaire</button>
+    <button onclick="filterCategory('avancé')">Avancé</button>
+  </div>
+
+  <div id="quizContainer">
+    <div id="progressBar"></div>
+    <p id="progressText"></p>
+    <p id="categoryInfo"></p>
+    <p><strong>Question <span id="questionNumber"></span></strong></p>
+    <p id="questionText">Chargement de la question...</p>
+
+    <div id="optionsContainer"></div>
+
+    <p id="questionFeedback" class="question-feedback"></p>
+
+    <button id="prevBtn" onclick="previousQuestion()">Précédent</button>
+    <button id="nextBtn" onclick="nextQuestion()">Suivant</button>
+  </div>
+
+  <div id="resultsContainer" style="display:none;">
+    <h2>Résultats</h2>
+    <p>Score : <span id="scorePercentage"></span> (<span id="scoreFraction"></span>)</p>
+    <button onclick="restartQuiz()">Recommencer</button>
+  </div>
+
+  <script>
+    // Copie ici tout ton code JS que tu as partagé, sauf la dernière ligne filterCategory("toutes");
+    // Puis ajoute à la fin la ligne d'initialisation
+const questions = [
+  // 70 questions Spring Boot QCM avec options, réponses, explications et catégories
+  {
+    question: "1. Quelle est la spécification JEE qui permet d’implémenter les web services basés sur le protocole SOAP ?",
+    options: ["JAXRS", "JAXWS", "JMS", "SoapWS"],
+    answer: 1,
+    explanation: "JAX-WS est utilisée pour créer des web services SOAP.",
+    category: "facile"
+  },
+  {
+    question: "2. C'est quoi exactement une spécification ?",
+    options: [
+      "Un ensemble de règles et standards définissant comment une technologie doit fonctionner",
+      "Un framework de développement",
+      "Un serveur d'application",
+      "Une bibliothèque Java"
+    ],
+    answer: 0,
+    explanation: "Une spécification définit un standard sans imposer une implémentation.",
+    category: "facile"
+  },
+  {
+    question: "3. C'est quoi RESTful ?",
+    options: [
+      "Une architecture basée sur HTTP pour les services web",
+      "Un protocole bas niveau pour la base de données",
+      "Un langage de programmation pour les services",
+      "Un type d'API SOAP"
+    ],
+    answer: 0,
+    explanation: "RESTful suit les principes REST utilisant HTTP et URI.",
+    category: "facile"
+  },
+  {
+    question: "4. Quel fichier Spring Boot contient les propriétés ?",
+    options: ["config.xml", "application.properties", "application.js", "settings.ini"],
+    answer: 1,
+    explanation: "application.properties (ou .yml) contient la configuration Spring Boot.",
+    category: "facile"
+  },
+  {
+    question: "5. Quelle annotation permet de marquer une classe comme contrôleur REST ?",
+    options: ["@RestController", "@Controller", "@Service", "@Component"],
+    answer: 0,
+    explanation: "@RestController = @Controller + @ResponseBody.",
+    category: "facile"
+  },
+  {
+    question: "6. Quel starter Spring Boot est nécessaire pour développer une API REST ?",
+    options: ["spring-boot-starter-web", "spring-boot-starter-data-jpa", "spring-boot-starter-security", "spring-boot-starter-test"],
+    answer: 0,
+    explanation: "spring-boot-starter-web inclut Spring MVC, Tomcat, Jackson, etc.",
+    category: "facile"
+  },
+  {
+    question: "7. Comment s'appelle le fichier principal qui démarre une application Spring Boot ?",
+    options: ["Main.java", "AppInit.java", "Application.java", "BootApp.java"],
+    answer: 2,
+    explanation: "Spring Boot utilise généralement Application.java avec @SpringBootApplication.",
+    category: "facile"
+  },
+  {
+    question: "8. Quelle annotation permet l'injection de dépendances automatique ?",
+    options: ["@Inject", "@Autowired", "@Provide", "@Bind"],
+    answer: 1,
+    explanation: "@Autowired injecte un bean automatiquement dans Spring.",
+    category: "facile"
+  },
+  {
+    question: "9. À quoi sert l'annotation @SpringBootApplication ?",
+    options: ["Activer les tests unitaires", "Créer un contrôleur REST", "Configurer l'application et activer l'auto-configuration", "Lancer une base de données"],
+    answer: 2,
+    explanation: "Elle regroupe @Configuration, @EnableAutoConfiguration, @ComponentScan.",
+    category: "facile"
+  },
+  {
+    question: "10. Quel composant permet de gérer les données en base avec Spring Boot ?",
+    options: ["@EntityManager", "SpringJdbc", "Spring Data JPA", "HibernateDirect"],
+    answer: 2,
+    explanation: "Spring Data JPA simplifie l'accès aux données avec des repositories.",
+    category: "facile"
+  },
+  // Suite manuelle des questions (11 à 70)
+  {
+    question: "11. Quelle annotation est utilisée pour marquer une classe comme un service dans Spring ?",
+    options: ["@Component", "@Bean", "@Service", "@Repository"],
+    answer: 2,
+    explanation: "@Service est une spécialisation de @Component utilisée pour les classes métier.",
+    category: "facile"
+  },
+  {
+    question: "12. Quelle annotation permet de mapper une méthode à une requête HTTP GET ?",
+    options: ["@PostMapping", "@GetMapping", "@RequestMapping(method = RequestMethod.POST)", "@PatchMapping"],
+    answer: 1,
+    explanation: "@GetMapping est utilisée pour les requêtes HTTP GET.",
+    category: "facile"
+  },
+  {
+    question: "13. Quelle annotation permet de récupérer un paramètre de requête dans une méthode ?",
+    options: ["@RequestParam", "@PathVariable", "@Autowired", "@Param"],
+    answer: 0,
+    explanation: "@RequestParam est utilisée pour les paramètres de requête comme ?name=value.",
+    category: "facile"
+  },
+  {
+    question: "14. Que permet de faire l'annotation @PathVariable ?",
+    options: ["Injecter un bean", "Lire un paramètre d'URL", "Ajouter une dépendance", "Créer une entité JPA"],
+    answer: 1,
+    explanation: "@PathVariable permet d'extraire une valeur de l'URL comme /user/{id}.",
+    category: "facile"
+  },
+  {
+    question: "15. Quel outil Spring Boot permet d'exposer des métriques de l'application ?",
+    options: ["Spring Boot Actuator", "Spring Boot Admin", "Spring Config Server", "Spring Boot Metrics"],
+    answer: 0,
+    explanation: "Spring Boot Actuator expose des endpoints pour surveiller l'application.",
+    category: "intermédiaire"
+  },
+    {
+  question: "84. Quel protocole est généralement utilisé pour la communication entre le frontend (ex: Angular) et le backend (ex: Spring Boot) ?",
+  options: [
+    "FTP",
+    "TCP",
+    "HTTP",
+    "SMTP"
+  ],
+  answer: 2,
+  explanation: "Le frontend et le backend communiquent généralement via HTTP, notamment avec des requêtes RESTful (GET, POST, PUT, DELETE).",
+  category: "facile"
+},
+{
+  question: "85. Que signifie la scalabilité verticale dans une architecture logicielle ?",
+  options: [
+    "Ajouter de nouveaux serveurs au système",
+    "Augmenter les ressources (CPU, RAM) d'un serveur existant",
+    "Utiliser plusieurs bases de données",
+    "Distribuer la charge sur plusieurs régions géographiques"
+  ],
+  answer: 1,
+  explanation: "La scalabilité verticale consiste à augmenter la capacité d’un serveur unique en lui ajoutant des ressources (RAM, CPU…).",
+  category: "intermédiaire"
+},
+{
+  question: "86. Que signifie la scalabilité horizontale dans une architecture distribuée ?",
+  options: [
+    "Augmenter la mémoire d'un serveur existant",
+    "Ajouter des ressources CPU à une seule machine",
+    "Ajouter plusieurs serveurs pour répartir la charge",
+    "Déplacer l’application sur un serveur cloud plus puissant"
+  ],
+  answer: 2,
+  explanation: "La scalabilité horizontale consiste à ajouter plusieurs instances ou serveurs pour mieux répartir la charge, typique des architectures microservices.",
+  category: "intermédiaire"
+},
+{
+  question: "87. Comment concevoir une application qui est fermée à la modification mais ouverte à l’extension ?",
+  options: [
+    "En dupliquant les classes au lieu de les modifier",
+    "En utilisant l’héritage ou l’implémentation d’interfaces pour ajouter de nouveaux comportements",
+    "En bloquant la modification du code via des annotations",
+    "En rendant toutes les classes finales"
+  ],
+  answer: 1,
+  explanation: "Le principe Open/Closed encourage l'extension du comportement d'une classe sans en modifier le code source, souvent via l’héritage ou les interfaces.",
+  category: "avancé"
+},
+{
+  question: "88. Comment injecter une dépendance dans une classe avec Spring ?",
+  options: [
+    "En instanciant la dépendance avec new",
+    "En utilisant @Autowired ou en la passant via le constructeur",
+    "En appelant manuellement une méthode setter",
+    "En important la dépendance depuis le package spring.core"
+  ],
+  answer: 1,
+  explanation: "Spring permet l’injection de dépendances automatiquement via les annotations comme @Autowired ou en passant les beans dans le constructeur.",
+  category: "facile"
+},
+{
+  question: "89. Que signifie le principe d’inversion de contrôle (IoC) ?",
+  options: [
+    "L’application décide elle-même des composants à instancier",
+    "Les objets contrôlent directement leur cycle de vie",
+    "Le framework gère l’instanciation et l’injection des dépendances",
+    "Les classes ne doivent jamais dépendre d’interfaces"
+  ],
+  answer: 2,
+  explanation: "L’inversion de contrôle signifie que le conteneur (ex: Spring) gère les dépendances au lieu de laisser l’objet instancier lui-même ce dont il dépend.",
+  category: "intermédiaire"
+},
+
+{
+  question: "90. Qu'entend-on par un couplage fort entre deux classes Java ?",
+  options: [
+    "Les classes ne partagent aucun comportement",
+    "Une classe utilise directement une autre classe concrète, ce qui rend difficile les modifications",
+    "Les classes communiquent uniquement via des événements asynchrones",
+    "Les classes utilisent des services REST pour communiquer"
+  ],
+  answer: 1,
+  explanation: "Un couplage fort signifie qu'une classe dépend d'une autre classe concrète, ce qui complique la maintenance et les tests.",
+  category: "intermédiaire"
+},
+{
+  question: "91. Quelle approche favorise un couplage faible entre deux classes Java ?",
+  options: [
+    "Une classe instancie directement l’autre avec `new`",
+    "Les classes sont liées via l’héritage multiple",
+    "La dépendance est injectée via une interface ou un constructeur",
+    "Les deux classes utilisent les mêmes variables statiques"
+  ],
+  answer: 2,
+  explanation: "Un couplage faible est obtenu lorsque les classes interagissent via des interfaces et l’injection de dépendances, ce qui améliore la flexibilité.",
+  category: "intermédiaire"
+},
+{
+  question: "92. Quel est le rôle principal de JPA (Java Persistence API) ?",
+  options: [
+    "Créer des interfaces utilisateur web",
+    "Définir un ensemble de mécanismes pour gérer la sécurité",
+    "Fournir des annotations et interfaces pour le mapping objet-relationnel",
+    "Configurer le serveur d’application"
+  ],
+  answer: 2,
+  explanation: "JPA permet de définir comment les objets Java sont reliés aux tables relationnelles grâce à des annotations, interfaces et classes abstraites.",
+  category: "intermédiaire"
+},
+{
+  question: "93. Quel est le rôle principal du framework Spring ?",
+  options: [
+    "Créer des interfaces graphiques",
+    "Assurer l’inversion de contrôle et simplifier le code métier",
+    "Compiler automatiquement les classes Java",
+    "Gérer uniquement les bases de données NoSQL"
+  ],
+  answer: 1,
+  explanation: "Spring est un framework qui applique le principe d'inversion de contrôle pour séparer les préoccupations et réduire le couplage.",
+  category: "intermédiaire"
+},
+{
+  question: "94. Quel aspect Spring peut-il prendre en charge dans une application Java EE ?",
+  options: [
+    "L’affichage des pages web",
+    "La compilation du code",
+    "La configuration de JPA et la gestion des transactions",
+    "Le routage des requêtes Angular"
+  ],
+  answer: 2,
+  explanation: "Spring prend en charge des tâches techniques comme la configuration de JPA et la gestion des transactions.",
+  category: "intermédiaire"
+},
+{
+  question: "95. En quoi Spring Boot facilite-t-il le développement par rapport à Spring classique ?",
+  options: [
+    "Il impose une configuration manuelle obligatoire",
+    "Il permet de simplifier la gestion des dépendances et active l’auto-configuration",
+    "Il remplace totalement Spring",
+    "Il supprime l’architecture MVC"
+  ],
+  answer: 1,
+  explanation: "Spring Boot facilite la configuration, la gestion des dépendances Maven, et fournit une auto-configuration pour démarrer rapidement un projet.",
+  category: "intermédiaire"
+},
+{
+  question: "96. Quel est le rôle principal du module Spring Data ?",
+  options: [
+    "Configurer les services web REST",
+    "Fournir des interfaces génériques pour gérer la persistance des entités JPA",
+    "Créer des pages HTML dynamiques",
+    "Remplacer complètement Hibernate"
+  ],
+  answer: 1,
+  explanation: "Spring Data fournit des interfaces prêtes à l'emploi pour gérer les entités JPA sans écrire de code de persistance.",
+  category: "intermédiaire"
+},
+{
+  question: "97. En utilisant Spring Data, quelle tâche devient inutile pour gérer la persistance ?",
+  options: [
+    "Créer une base de données",
+    "Créer manuellement les interfaces et implémentations DAO avec EntityManager",
+    "Définir les entités JPA",
+    "Écrire des requêtes SQL brutes"
+  ],
+  answer: 1,
+  explanation: "Spring Data évite de créer manuellement les interfaces DAO, il suffit d’hériter de JpaRepository.",
+  category: "intermédiaire"
+},
+{
+  question: "98. Comment peut-on ajouter des méthodes personnalisées dans une interface Spring Data JPA ?",
+  options: [
+    "En les déclarant dans le fichier application.properties",
+    "En étendant une classe de base",
+    "En les déclarant dans l’interface JpaRepository, Spring Data les implémente automatiquement",
+    "En créant une classe anonyme"
+  ],
+  answer: 2,
+  explanation: "Il suffit de déclarer la méthode dans l’interface : Spring Data génère automatiquement l’implémentation.",
+  category: "avancé"
+},
+{
+  question: "99. Quel type d’association JPA convient pour modéliser une catégorie contenant plusieurs produits ?",
+  options: [
+    "@ManyToOne",
+    "@OneToMany",
+    "@ManyToMany",
+    "@JoinTable"
+  ],
+  answer: 1,
+  explanation: "@OneToMany est utilisée lorsqu'une entité (Catégorie) est liée à plusieurs entités (Produits).",
+  category: "intermédiaire"
+},
+{
+  question: "99. Quel type d’association JPA convient pour modéliser une catégorie contenant plusieurs produits ?",
+  options: [
+    "@ManyToOne",
+    "@OneToMany",
+    "@ManyToMany",
+    "@JoinTable"
+  ],
+  answer: 1,
+  explanation: "@OneToMany est utilisée lorsqu'une entité (Catégorie) est liée à plusieurs entités (Produits).",
+  category: "intermédiaire"
+},
+{
+  question: "101. Quelle méthode de service serait la plus appropriée pour récupérer les produits d’une catégorie ?",
+  options: [
+    "List<Product> findByCategoryId(Long id)",
+    "Product getProductById(Long id)",
+    "void deleteCategory(Category c)",
+    "List<Category> getAllCategories()"
+  ],
+  answer: 0,
+  explanation: "Pour obtenir les produits d'une catégorie, il faut une méthode basée sur la clé étrangère de la relation.",
+  category: "avancé"
+},
+{
+  question: "103. Quelle stratégie d’héritage est recommandée avec JPA pour modéliser Compte, CompteCourant et CompteEpargne ?",
+  options: ["@Inheritance(strategy = InheritanceType.SINGLE_TABLE)", "@Embedded", "@ElementCollection", "@JoinColumn"],
+  answer: 0,
+  explanation: "L’héritage avec SINGLE_TABLE permet de stocker tous les types de comptes dans une seule table.",
+  category: "intermédiaire"
+},
+{
+  question: "104. Quel est le rôle principal de la couche DAO dans une architecture Spring Boot ?",
+  options: [
+    "Afficher les vues Thymeleaf",
+    "Effectuer les appels HTTP",
+    "Effectuer les opérations de persistance en base de données",
+    "Gérer la sécurité avec JWT"
+  ],
+  answer: 2,
+  explanation: "La couche DAO interagit avec la base via les interfaces JPARepository.",
+  category: "facile"
+},
+{
+  question: "105. Quel composant Spring est utilisé pour implémenter la logique métier comme les retraits/versements ?",
+  options: ["@Controller", "@Service", "@Entity", "@Autowired"],
+  answer: 1,
+  explanation: "La logique métier est implémentée dans une classe annotée avec @Service.",
+  category: "intermédiaire"
+},
+{
+  question: "106. Quel type de composant Spring MVC traite les requêtes HTTP dans la couche Web ?",
+  options: ["@Entity", "@Service", "@Controller", "@Component"],
+  answer: 2,
+  explanation: "@Controller est responsable de traiter les requêtes web dans Spring MVC.",
+  category: "facile"
+},
+{
+  question: "107. Quel outil de sécurité est utilisé dans Spring Boot pour gérer l’authentification des utilisateurs ?",
+  options: ["Thymeleaf Auth", "JWTManager", "Spring Security", "JPA Guard"],
+  answer: 2,
+  explanation: "Spring Security est utilisé pour sécuriser les accès et gérer l’authentification.",
+  category: "intermédiaire"
+},
+{
+  question: "108. Dans une application JEE, quel objet permet au contrôleur (Servlet) de lire les données d'une requête HTTP ?",
+  options: [
+    "HttpResponse",
+    "HttpServletRequest",
+    "HttpRequestReader",
+    "RequestContext"
+  ],
+  answer: 1,
+  explanation: "L'objet `HttpServletRequest` permet d'accéder aux données de la requête envoyée par le client (GET ou POST).",
+  category: "facile"
+},
+{
+  question: "109. Quelle est la principale différence entre les annotations @Controller et @RestController dans Spring ?",
+  options: [
+    "@Controller est utilisé pour les APIs REST, tandis que @RestController est utilisé pour les vues HTML.",
+    "@RestController est une combinaison de @Controller et @ResponseBody pour créer des APIs REST.",
+    "@RestController est utilisé uniquement pour les tests.",
+    "Il n'y a aucune différence entre les deux annotations."
+  ],
+  answer: 1,
+  explanation: "@RestController est équivalent à @Controller + @ResponseBody et sert à exposer des APIs REST sans renvoyer de vues HTML.",
+  category: "intermédiaire"
+},
+{
+  question: "110. Quelle annotation permet de spécifier la stratégie d’héritage en JPA ?",
+  options: ["@MappedSuperclass", "@EntityInheritance", "@Inheritance", "@JoinColumn"],
+  answer: 2,
+  explanation: "@Inheritance permet de définir la stratégie d’héritage en JPA.",
+  category: "avancé"
+},
+{
+  question: "111. Quelle stratégie utilise une seule table pour toute la hiérarchie de classes ?",
+  options: ["SINGLE_TABLE", "JOINED", "TABLE_PER_CLASS", "MULTI_TABLE"],
+  answer: 0,
+  explanation: "SINGLE_TABLE est la stratégie qui utilise une seule table pour toutes les classes.",
+  category: "avancé"
+},
+{
+  question: "112. Quelle stratégie génère le plus de colonnes nulles ?",
+  options: ["TABLE_PER_CLASS", "SINGLE_TABLE", "JOINED", "NONE"],
+  answer: 1,
+  explanation: "SINGLE_TABLE regroupe tous les champs des sous-classes, donc beaucoup de colonnes nulles.",
+  category: "avancé"
+},
+{
+  question: "113. Quelle stratégie est la plus normalisée et utilise des jointures entre les tables ?",
+  options: ["SINGLE_TABLE", "TABLE_PER_CLASS", "JOINED", "FLAT_TABLE"],
+  answer: 2,
+  explanation: "JOINED est la plus normalisée car elle sépare les entités dans des tables distinctes et utilise des jointures.",
+  category: "avancé"
+},
+{
+  question: "114. Quelle stratégie est inadaptée aux requêtes polymorphes efficaces (sur la classe mère) ?",
+  options: ["SINGLE_TABLE", "JOINED", "TABLE_PER_CLASS", "Aucune"],
+  answer: 2,
+  explanation: "TABLE_PER_CLASS est inefficace pour les requêtes polymorphes car elle nécessite des unions complexes.",
+  category: "avancé"
+},
+{
+  question: "115. Que permet l’annotation @DiscriminatorColumn ?",
+  options: [
+    "Définir une clé étrangère",
+    "Indiquer la colonne de type dans la stratégie SINGLE_TABLE",
+    "Créer une table intermédiaire",
+    "Ajouter une contrainte d’unicité"
+  ],
+  answer: 1,
+  explanation: "@DiscriminatorColumn permet de spécifier la colonne qui identifie le type dans une stratégie SINGLE_TABLE.",
+  category: "avancé"
+},
+{
+  question: "116. Dans la stratégie JOINED, que contient la table parent ?",
+  options: [
+    "Rien, elle est ignorée",
+    "Les attributs spécifiques à chaque sous-classe",
+    "Les attributs communs à toute la hiérarchie",
+    "Un identifiant uniquement"
+  ],
+  answer: 2,
+  explanation: "La table parent contient les attributs communs à toute la hiérarchie dans JOINED.",
+  category: "avancé"
+},
+{
+  question: "117. Pourquoi utilise-t-on des templates ou layouts dans les applications web ?",
+  options: [
+    "Pour appliquer des styles CSS uniquement",
+    "Pour éviter la duplication de code HTML commun comme les headers et footers",
+    "Pour générer des fichiers PDF automatiquement",
+    "Pour améliorer la performance du serveur"
+  ],
+  answer: 1,
+  explanation: "Les templates permettent de centraliser le contenu commun comme le header, footer ou les menus.",
+  category: "intermédiaire"
+},
+{
+  question: "118. Quelle est l’avantage principal de définir une page template ?",
+  options: [
+    "Gérer le cache HTTP",
+    "Partager des sessions utilisateurs",
+    "Réutiliser les parties HTML fixes et déclarer des sections variables",
+    "Réduire le nombre de dépendances Maven"
+  ],
+  answer: 2,
+  explanation: "Une page template permet d’éviter le copier-coller en centralisant les éléments communs.",
+  category: "intermédiaire"
+},
+{
+  question: "119. Dans une page template, que définit-on généralement comme parties fixes ?",
+  options: [
+    "La base de données",
+    "Les fonctions JavaScript dynamiques",
+    "Le header, footer, menu, logo",
+    "Les formulaires utilisateurs"
+  ],
+  answer: 2,
+  explanation: "Les parties fixes sont le header, le menu, le footer, etc. définies dans le template.",
+  category: "facile"
+},
+{
+  question: "120. Comment appelle-t-on la partie d’une page template qui est remplacée dynamiquement selon le contenu ?",
+  options: [
+    "Un layout static",
+    "Un fragment modulaire",
+    "Une section dynamique ou un fragment de contenu",
+    "Un bloc HTML"
+  ],
+  answer: 2,
+  explanation: "Les templates utilisent des sections dynamiques (fragments) qui sont remplacés dans chaque page selon son contenu.",
+  category: "intermédiaire"
+},
+{
+  question: "121. Quel est le rôle principal de Spring Security ?",
+  options: [
+    "Assurer la persistance des données",
+    "Protéger l’application contre les accès non autorisés",
+    "Configurer les fichiers CSS",
+    "Accélérer le rendu côté client"
+  ],
+  answer: 1,
+  explanation: "Spring Security est utilisé pour gérer l'authentification et l'autorisation dans une application.",
+  category: "intermédiaire"
+},
+{
+  question: "122. Que signifie CSRF en sécurité web ?",
+  options: [
+    "Cross Site Request Forgery",
+    "Cross Session Role Filtering",
+    "Custom Spring Request Form",
+    "Client-Side Rendering Framework"
+  ],
+  answer: 0,
+  explanation: "CSRF (Cross Site Request Forgery) est une attaque où un utilisateur authentifié est piégé pour effectuer une action non désirée.",
+  category: "avancé"
+},
+{
+  question: "123. Comment Spring Security protège-t-il contre les attaques CSRF ?",
+  options: [
+    "En chiffrant la base de données",
+    "En ajoutant automatiquement un token CSRF dans les formulaires",
+    "En désactivant les sessions utilisateur",
+    "En bloquant toutes les requêtes POST"
+  ],
+  answer: 1,
+  explanation: "Spring Security inclut automatiquement un token CSRF dans les formulaires pour valider que la requête vient de l'utilisateur légitime.",
+  category: "avancé"
+},
+{
+  question: "124. Dans une authentification de type **stateful**, où sont stockées les données de session ?",
+  options: [
+    "Dans un token JWT",
+    "Dans une base MongoDB",
+    "Dans un cookie public",
+    "Côté serveur d’authentification"
+  ],
+  answer: 3,
+  explanation: "En mode stateful, les informations de session sont stockées côté serveur.",
+  category: "intermédiaire"
+},
+{
+  question: "125. Dans une authentification de type **stateless**, que contient le jeton d’authentification ?",
+  options: [
+    "Une URL vers la session distante",
+    "Les données de session chiffrées",
+    "Une clé publique de l'utilisateur",
+    "Un identifiant généré par le navigateur"
+  ],
+  answer: 1,
+  explanation: "En mode stateless (comme JWT), toutes les informations nécessaires à l’authentification sont contenues dans le jeton envoyé au client.",
+  category: "intermédiaire"
+},
+{
+  question: "126. Qu’est-ce qu’une attaque CSRF (Cross Site Request Forgery) ?",
+  options: [
+    "Une attaque par injection SQL",
+    "Une tentative de forcer un utilisateur authentifié à exécuter une requête non désirée",
+    "Une attaque qui modifie la structure DOM d’une page web",
+    "Un piratage du mot de passe de l’administrateur"
+  ],
+  answer: 1,
+  explanation: "CSRF consiste à tromper un utilisateur authentifié pour qu’il exécute une requête HTTP à son insu, en utilisant ses propres droits.",
+  category: "avancé"
+},
+{
+  question: "127. Pourquoi les attaques CSRF sont-elles dangereuses ?",
+  options: [
+    "Elles exposent le code source du serveur",
+    "Elles forcent l’utilisateur à se déconnecter",
+    "Elles exploitent la session active de l’utilisateur pour exécuter des actions à sa place",
+    "Elles permettent de modifier les images du site"
+  ],
+  answer: 2,
+  explanation: "L’attaquant profite de la session active d’un utilisateur authentifié pour envoyer une requête malveillante à son insu.",
+  category: "avancé"
+},
+{
+  question: "128. Quel est le mécanisme typique utilisé pour empêcher une attaque CSRF ?",
+  options: [
+    "L’authentification OAuth2",
+    "Les sessions stateful",
+    "Les tokens anti-CSRF insérés dans les formulaires",
+    "Le chiffrement du mot de passe"
+  ],
+  answer: 2,
+  explanation: "Un token CSRF est généré côté serveur et injecté dans chaque formulaire, empêchant les requêtes malicieuses externes.",
+  category: "avancé"
+},
+{
+  question: "129. Dans une attaque CSRF, qui exécute réellement la requête malveillante ?",
+  options: [
+    "L’attaquant",
+    "Le navigateur du client victime",
+    "Le serveur cible",
+    "Le système de messagerie"
+  ],
+  answer: 1,
+  explanation: "C’est la victime elle-même qui exécute, à son insu, une requête malveillante via son navigateur authentifié.",
+  category: "avancé"
+},
+{
+  question: "130. Quel est le principal objectif d’un attaquant exploitant une faille CSRF ?",
+  options: [
+    "Installer un virus",
+    "Envoyer des emails de phishing",
+    "Effectuer une action à la place de l’utilisateur sans son consentement",
+    "Accélérer le temps de réponse du serveur"
+  ],
+  answer: 2,
+  explanation: "Le but d’un CSRF est de manipuler un utilisateur authentifié pour exécuter des requêtes frauduleuses à son insu.",
+  category: "avancé"
+}
+
+,
+  {
+    question: "16. Quel profil est activé par défaut si aucun n’est précisé ?",
+    options: ["dev", "default", "test", "prod"],
+    answer: 1,
+    explanation: "Le profil 'default' est toujours actif si aucun autre n’est défini.",
+    category: "intermédiaire"
+  },
+  {
+    question: "17. À quoi sert l’annotation @Value dans Spring ?",
+    options: ["Injecter des valeurs de configuration", "Mapper une entité", "Ajouter une dépendance", "Créer un contrôleur"],
+    answer: 0,
+    explanation: "@Value permet d’injecter des propriétés comme ${spring.application.name}.",
+    category: "intermédiaire"
+  },
+  {
+    question: "18. Quelle annotation est utilisée pour mapper une entité JPA ?",
+    options: ["@Table", "@Entity", "@Model", "@Column"],
+    answer: 1,
+    explanation: "@Entity permet de déclarer une classe comme entité persistante.",
+    category: "intermédiaire"
+  },
+  {
+    question: "19. Quelle annotation est utilisée pour identifier la clé primaire dans une entité ?",
+    options: ["@Id", "@GeneratedValue", "@PrimaryKey", "@Key"],
+    answer: 0,
+    explanation: "@Id indique quel champ est la clé primaire.",
+    category: "intermédiaire"
+  },
+  {
+    question: "20. Quelle dépendance Maven est utilisée pour Spring Data JPA ?",
+    options: ["spring-boot-starter-data", "spring-boot-starter-data-jpa", "spring-data-core", "hibernate-core"],
+    answer: 1,
+    explanation: "spring-boot-starter-data-jpa intègre Spring Data JPA et Hibernate.",
+    category: "intermédiaire"
+  },
+  {
+    question: "21. Quelle est l’annotation pour rendre un bean disponible dans le contexte Spring ?",
+    options: ["@Bean", "@Config", "@Autowired", "@Injectable"],
+    answer: 0,
+    explanation: "@Bean permet de déclarer un bean dans une classe @Configuration.",
+    category: "intermédiaire"
+  },
+  {
+    question: "22. Quelle annotation permet d’indiquer une classe de configuration dans Spring ?",
+    options: ["@Configuration", "@Configurable", "@Bean", "@Component"],
+    answer: 0,
+    explanation: "@Configuration permet de créer des beans de manière programmatique.",
+    category: "intermédiaire"
+  },
+  {
+    question: "23. Quelle annotation est utilisée pour mapper une requête POST ?",
+    options: ["@GetMapping", "@PutMapping", "@PostMapping", "@PatchMapping"],
+    answer: 2,
+    explanation: "@PostMapping est utilisée pour les requêtes POST.",
+    category: "intermédiaire"
+  },
+  {
+    question: "24. Comment injecter une dépendance via le constructeur ?",
+    options: ["En utilisant @Autowired sur un champ", "En utilisant @Autowired sur un constructeur", "Avec @Value", "Avec @Service"],
+    answer: 1,
+    explanation: "L’injection par constructeur est recommandée avec @Autowired (ou sans si un seul constructeur).",
+    category: "intermédiaire"
+  },
+  {
+    question: "25. Quelle annotation permet d’exécuter du code au démarrage de l’application ?",
+    options: ["@Startup", "@RunOnStartup", "CommandLineRunner", "@PostConstruct"],
+    answer: 2,
+    explanation: "CommandLineRunner est une interface à implémenter pour exécuter du code au démarrage.",
+    category: "intermédiaire"
+  },
+  {
+    question: "26. Que permet de faire Spring Boot DevTools ?",
+    options: ["Déploiement en production", "Hot reload pendant le développement", "Ajouter des logs", "Activer Spring Security"],
+    answer: 1,
+    explanation: "DevTools améliore l’expérience développeur avec rechargement automatique.",
+    category: "intermédiaire"
+  },
+  {
+    question: "27. Quel fichier permet de configurer les propriétés selon l’environnement ?",
+    options: ["application.properties", "application-{profile}.properties", "config.xml", "boot.properties"],
+    answer: 1,
+    explanation: "Spring charge application-dev.properties ou application-prod.properties selon le profil.",
+    category: "intermédiaire"
+  },
+  {
+    question: "28. Quelle annotation est utilisée pour mapper un champ à une colonne JPA ?",
+    options: ["@Field", "@JoinColumn", "@Column", "@Map"],
+    answer: 2,
+    explanation: "@Column permet de spécifier les détails d’une colonne en base.",
+    category: "intermédiaire"
+  },
+  {
+    question: "29. Quelle interface doit-on étendre pour créer un repository JPA ?",
+    options: ["JpaContext", "EntityManager", "CrudRepository", "JdbcRepository"],
+    answer: 2,
+    explanation: "CrudRepository fournit les opérations de base (findAll, save, delete…).",
+    category: "intermédiaire"
+  },
+  {
+    question: "30. Que permet @Query dans un repository ?",
+    options: ["Créer un repository", "Lancer un test", "Exécuter une requête personnalisée", "Créer une entité"],
+    answer: 2,
+    explanation: "@Query permet d’écrire des requêtes JPQL ou natives dans les repositories.",
+    category: "intermédiaire"
+  },
+  {
+    question: "31. Quel mécanisme permet de protéger les routes dans Spring Security ?",
+    options: ["@Secured", "@EnableSecurity", "@ProtectedRoute", "@Authorize"],
+    answer: 0,
+    explanation: "@Secured est utilisée pour restreindre l'accès à des méthodes en fonction des rôles.",
+    category: "intermédiaire"
+  },
+  {
+    question: "32. Quelle classe configure la sécurité Web dans Spring Security ?",
+    options: ["SecurityConfigurer", "WebSecurityConfigurerAdapter", "SecurityProvider", "SecurityConfigAdapter"],
+    answer: 1,
+    explanation: "WebSecurityConfigurerAdapter est l’ancienne manière d'étendre la configuration de sécurité.",
+    category: "intermédiaire"
+  },
+  {
+    question: "33. Quel est le rôle de la classe AuthenticationManager ?",
+    options: ["Gérer l’injection de dépendances", "Créer des tokens JWT", "Gérer le processus d’authentification", "Gérer les profils Spring"],
+    answer: 2,
+    explanation: "AuthenticationManager orchestre l’authentification des utilisateurs.",
+    category: "intermédiaire"
+  },
+  {
+    question: "34. Quelle dépendance permet d’intégrer JWT avec Spring Security ?",
+    options: ["spring-security-jwt", "jjwt", "spring-boot-starter-security", "jwt-spring-boot"],
+    answer: 1,
+    explanation: "jjwt (Java JWT) est une des bibliothèques populaires pour manipuler des JWT en Java.",
+    category: "avancé"
+  },
+  {
+    question: "35. À quoi sert un Refresh Token dans une architecture sécurisée ?",
+    options: ["Créer des logs", "Renouveler un Access Token expiré", "Ajouter un rôle à un utilisateur", "Accéder à la base de données"],
+    answer: 1,
+    explanation: "Le Refresh Token permet d’obtenir un nouveau Access Token sans se réauthentifier.",
+    category: "avancé"
+  },
+  {
+    question: "36. Quelle annotation active Eureka Client dans un microservice Spring Boot ?",
+    options: ["@EnableDiscovery", "@EnableEurekaClient", "@DiscoveryClient", "@EurekaEnable"],
+    answer: 1,
+    explanation: "@EnableEurekaClient permet au service de s'enregistrer auprès d’un serveur Eureka.",
+    category: "avancé"
+  },
+  {
+    question: "37. Quel module permet à un microservice de découvrir d'autres services ?",
+    options: ["Spring Cloud Discovery", "Spring Cloud Config", "Eureka Client", "Spring Boot Admin"],
+    answer: 2,
+    explanation: "Eureka Client est utilisé pour découvrir et s’enregistrer auprès d’Eureka Server.",
+    category: "avancé"
+  },
+  {
+    question: "38. Quel composant Spring Cloud permet de centraliser la configuration des microservices ?",
+    options: ["Eureka", "Spring Cloud Config Server", "Feign Client", "Zuul"],
+    answer: 1,
+    explanation: "Spring Cloud Config Server permet de stocker et partager la configuration.",
+    category: "avancé"
+  },
+  {
+    question: "39. Quel outil permet d’implémenter des appels REST entre microservices ?",
+    options: ["Spring RPC", "Feign Client", "RestBuilder", "HttpTemplate"],
+    answer: 1,
+    explanation: "Feign Client est une abstraction REST très utilisée dans Spring Cloud.",
+    category: "avancé"
+  },
+  {
+    question: "40. Quelle annotation permet d’activer un client Feign ?",
+    options: ["@EnableFeignClients", "@EnableFeign", "@FeignScan", "@RestClient"],
+    answer: 0,
+    explanation: "@EnableFeignClients permet de scanner et enregistrer les interfaces Feign.",
+    category: "avancé"
+  },
+  {
+    question: "41. Quelle annotation est utilisée pour mapper un paramètre de l'URL dans Spring MVC ?",
+    options: ["@PathVariable", "@RequestParam", "@QueryParam", "@Param"],
+    answer: 0,
+    explanation: "@PathVariable permet d’extraire une valeur depuis l’URL comme /users/{id}.",
+    category: "avancé"
+  },
+  {
+    question: "42. Quel type d’exception Spring gère les erreurs 404 ?",
+    options: ["EntityNotFoundException", "ResourceNotFoundException", "ResponseStatusException", "NotFoundException"],
+    answer: 2,
+    explanation: "ResponseStatusException peut être utilisée pour retourner des erreurs HTTP personnalisées.",
+    category: "avancé"
+  },
+  {
+    question: "43. Quelle annotation permet de valider automatiquement les champs d’un objet ?",
+    options: ["@Valid", "@Validated", "@Check", "@AssertTrue"],
+    answer: 0,
+    explanation: "@Valid est utilisée pour déclencher la validation des beans.",
+    category: "avancé"
+  },
+  {
+    question: "44. Quel framework est intégré pour la validation dans Spring Boot ?",
+    options: ["Hibernate Validator", "Apache Commons Validator", "Spring Validator", "Bean Validation"],
+    answer: 0,
+    explanation: "Hibernate Validator est l’implémentation la plus utilisée de la spécification Bean Validation.",
+    category: "avancé"
+  },
+  {
+    question: "45. Quel composant permet de gérer la pagination dans Spring Data ?",
+    options: ["Page", "Slice", "Pageable", "PagedList"],
+    answer: 2,
+    explanation: "Pageable est utilisé pour définir la pagination des requêtes.",
+    category: "avancé"
+  },
+  {
+    question: "46. Quel annotation permet d’exécuter une méthode après la création d’un bean ?",
+    options: ["@PostConstruct", "@PreDestroy", "@AfterInit", "@AfterPropertiesSet"],
+    answer: 0,
+    explanation: "@PostConstruct est appelée après l’initialisation du bean.",
+    category: "avancé"
+  },
+  {
+    question: "47. Quelle annotation permet d’exécuter une méthode avant la destruction d’un bean ?",
+    options: ["@PreDestroy", "@PostDestroy", "@BeforeDestroy", "@Destroy"],
+    answer: 0,
+    explanation: "@PreDestroy est appelée avant la destruction du bean.",
+    category: "avancé"
+  },
+  {
+    question: "48. Quel est le rôle de l’annotation @Transactional ?",
+    options: [
+      "Définir une transaction pour la méthode",
+      "Gérer les exceptions",
+      "Définir un bean",
+      "Définir une classe comme contrôleur"
+    ],
+    answer: 0,
+    explanation: "@Transactional permet de gérer automatiquement les transactions.",
+    category: "avancé"
+  },
+  {
+    question: "49. Quelle annotation permet d’injecter un bean par nom ?",
+    options: ["@Qualifier", "@Primary", "@Autowired", "@Resource"],
+    answer: 0,
+    explanation: "@Qualifier permet de spécifier quel bean injecter en cas de plusieurs candidats.",
+    category: "avancé"
+  },
+  {
+    question: "50. Quel composant Spring Boot permet de configurer des tâches planifiées ?",
+    options: ["@EnableScheduling", "@Scheduled", "@Async", "@TaskScheduler"],
+    answer: 0,
+    explanation: "@EnableScheduling active la gestion des tâches planifiées dans l’application.",
+    category: "avancé"
+  },
+  {
+    question: "51. Quelle annotation permet d’exécuter une méthode planifiée ?",
+    options: ["@Scheduled", "@Async", "@RunScheduled", "@EnableScheduling"],
+    answer: 0,
+    explanation: "@Scheduled définit une méthode à exécuter selon un planning.",
+    category: "avancé"
+  },
+  {
+    question: "52. Quel protocole est principalement utilisé pour sécuriser les échanges HTTP ?",
+    options: ["HTTP", "FTP", "HTTPS", "SSH"],
+    answer: 2,
+    explanation: "HTTPS sécurise les échanges HTTP avec TLS/SSL.",
+    category: "avancé"
+  },
+  {
+    question: "53. Quel composant Spring permet la conversion automatique des objets JSON ?",
+    options: ["Jackson", "Gson", "FastJSON", "JSON-B"],
+    answer: 0,
+    explanation: "Jackson est la bibliothèque par défaut pour la conversion JSON dans Spring Boot.",
+    category: "avancé"
+  },
+  {
+    question: "54. Quel est le port HTTP par défaut utilisé par Spring Boot ?",
+    options: ["80", "8080", "443", "8888"],
+    answer: 1,
+    explanation: "Le port 8080 est le port par défaut de Spring Boot.",
+    category: "avancé"
+  },
+  {
+    question: "55. Quel starter Spring Boot permet d’ajouter la sécurité ?",
+    options: ["spring-boot-starter-security", "spring-boot-starter-web", "spring-boot-starter-data-jpa", "spring-boot-starter-actuator"],
+    answer: 0,
+    explanation: "spring-boot-starter-security intègre Spring Security.",
+    category: "avancé"
+  },
+  {
+    question: "56. Que fait l’annotation @EnableAutoConfiguration ?",
+    options: ["Désactive la configuration automatique", "Active la configuration automatique", "Crée un bean", "Déclare une entité"],
+    answer: 1,
+    explanation: "Elle permet à Spring Boot de configurer automatiquement l’application.",
+    category: "avancé"
+  },
+  {
+    question: "57. Quelle annotation Spring Boot permet d'exécuter un test unitaire ?",
+    options: ["@Test", "@SpringBootTest", "@RunWith", "@MockBean"],
+    answer: 1,
+    explanation: "@SpringBootTest charge le contexte Spring pour les tests unitaires.",
+    category: "avancé"
+  },
+  {
+    question: "58. Quelle classe est utilisée pour manipuler les requêtes HTTP dans Spring MVC ?",
+    options: ["HttpServletRequest", "RestTemplate", "WebClient", "MockMvc"],
+    answer: 0,
+    explanation: "HttpServletRequest représente la requête HTTP reçue.",
+    category: "avancé"
+  },
+  {
+    question: "59. Quel starter Spring Boot permet de créer une application réactive ?",
+    options: ["spring-boot-starter-webflux", "spring-boot-starter-web", "spring-boot-starter-data-jpa", "spring-boot-starter-actuator"],
+    answer: 0,
+    explanation: "spring-boot-starter-webflux permet de créer des applications réactives avec Spring WebFlux.",
+    category: "avancé"
+  },
+  {
+    question: "60. Quel est l’outil pour générer automatiquement un fichier OpenAPI ?",
+    options: ["Swagger", "OpenAPI Generator", "SpringFox", "Spring REST Docs"],
+    answer: 0,
+    explanation: "Swagger est largement utilisé pour documenter les API REST.",
+    category: "avancé"
+  },
+  {
+    question: "61. Quelle annotation permet de gérer les exceptions globalement dans Spring MVC ?",
+    options: ["@ExceptionHandler", "@ControllerAdvice", "@ResponseStatus", "@ErrorHandling"],
+    answer: 1,
+    explanation: "@ControllerAdvice permet de centraliser la gestion des exceptions.",
+    category: "avancé"
+  },
+  {
+    question: "62. Que permet de faire l’annotation @ResponseBody ?",
+    options: ["Retourner une vue HTML", "Retourner le corps de la réponse HTTP", "Gérer les exceptions", "Injecter un bean"],
+    answer: 1,
+    explanation: "@ResponseBody indique que le retour est envoyé dans le corps HTTP (JSON, XML...).",
+    category: "avancé"
+  },
+  {
+    question: "63. Quelle annotation permet d’exclure une classe du scan des composants ?",
+    options: ["@ComponentScan(excludeFilters = ...)", "@ExcludeComponent", "@Ignore", "@SkipComponent"],
+    answer: 0,
+    explanation: "@ComponentScan peut exclure certains packages ou classes.",
+    category: "avancé"
+  },
+  {
+    question: "64. Quelle annotation permet d’activer la gestion des transactions ?",
+    options: ["@Transactional", "@EnableTransactionManagement", "@Transaction", "@EnableTransactions"],
+    answer: 1,
+    explanation: "@EnableTransactionManagement active la gestion des transactions par annotations.",
+    category: "avancé"
+  },
+  {
+    question: "65. Que fait l’annotation @Primary ?",
+    options: ["Désigne le bean par défaut en cas d’ambiguïté", "Injection obligatoire", "Injection facultative", "Crée un singleton"],
+    answer: 0,
+    explanation: "@Primary désigne le bean préféré pour l’injection.",
+    category: "avancé"
+  },
+  {
+    question: "66. Quel mécanisme permet d’exécuter du code en tâche asynchrone ?",
+    options: ["@Async", "@Scheduled", "@Thread", "@Future"],
+    answer: 0,
+    explanation: "@Async permet d’exécuter une méthode de manière asynchrone.",
+    category: "avancé"
+  },
+  {
+    question: "67. Quelle annotation permet d’injecter une collection de beans ?",
+    options: ["@Autowired List<T>", "@InjectSet", "@AutowiredCollection", "@InjectList"],
+    answer: 0,
+    explanation: "Spring injecte automatiquement les collections si typées.",
+    category: "avancé"
+  },
+  {
+    question: "68. Quel starter est utilisé pour tester les applications Spring Boot ?",
+    options: ["spring-boot-starter-test", "spring-boot-starter-web", "spring-boot-starter-security", "spring-boot-starter-data-jpa"],
+    answer: 0,
+    explanation: "spring-boot-starter-test intègre JUnit, Mockito, et autres outils de test.",
+    category: "avancé"
+  },
+  {
+    question: "69. Quelle annotation permet d’indiquer une méthode à exécuter après les tests unitaires ?",
+    options: ["@After", "@AfterTest", "@AfterEach", "@PostTest"],
+    answer: 2,
+    explanation: "@AfterEach est utilisée dans JUnit 5 pour exécuter du code après chaque test.",
+    category: "avancé"
+  },
+  {
+    question: "70. Quelle annotation active la configuration automatique Spring Boot ?",
+    options: ["@EnableAutoConfiguration", "@SpringBootApplication", "@AutoConfig", "@EnableSpringBoot"],
+    answer: 1,
+    explanation: "@SpringBootApplication inclut @EnableAutoConfiguration.",
+    category: "avancé"
+  },
+    {
+  question: "71. Quelles sont les trois parties qui composent un JWT (Json Web Token) ?",
+  options: ["Heade Payload et Signature" ,"Header, Contract, Signature","SOAP, WSDL et UDDI","Contrat, Payload et Signature"],
+  answer: 0,
+  explanation: "Heade Payload et Signature",
+  category: "avancé"
+    },
+    {
+    question: "72. Comment est calculée la signature d’un JWT ?",
+    options: ["La signature est calculée en fonction du Header" , 
+              "La signature est calculée en fonction du Header" ,
+              "La signature est calculée en fonction du Header, Payload et les deux clés : publique et privée" ,
+              "La signature est calculée en fonction Payload et la clé privée"],
+    answer: 3,
+    explanation: "La signature est calculée en fonction Payload et la clé privée",
+    category: "avancé"
+  },
+    {
+      question: "73. Quand un utilisateur est authentifié via Keycloak, l’application frontend reçoit un Token qui contient: ",
+      options: ["Un JWT Access Token" , 
+          "Un JWT Refresh Token" ,
+          "Un JWT Access Token et un JWT Refresh Token" ,
+          "Un simple Token"],
+    answer: 2,
+    explanation: "Un JWT Access Token et un JWT Refresh Token",
+    category: "avancé"  
+    }
+    
+
+]
+
+let filteredQuestions = [...questions];
+let currentCategory = "toutes";
+
+let currentQuestionIndex = 0;
+let score = 0;
+let userAnswers = new Array(filteredQuestions.length).fill(null);
+
+const quizContainer = document.getElementById("quizContainer");
+const questionNumberElem = document.getElementById("questionNumber");
+const questionTextElem = document.getElementById("questionText");
+const optionsContainer = document.getElementById("optionsContainer");
+const questionFeedback = document.getElementById("questionFeedback");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const progressBar = document.getElementById("progressBar");
+const progressText = document.getElementById("progressText");
+const resultsContainer = document.getElementById("resultsContainer");
+const scorePercentageElem = document.getElementById("scorePercentage");
+const scoreFractionElem = document.getElementById("scoreFraction");
+const categoryElem = document.getElementById("categoryInfo");
+
+function filterCategory(category) {
+  currentCategory = category;
+  if (category === "toutes") {
+    filteredQuestions = [...questions];
+  } else {
+    filteredQuestions = questions.filter(q => q.category === category);
+  }
+  currentQuestionIndex = 0;
+  userAnswers = new Array(filteredQuestions.length).fill(null);
+  score = 0;
+  resultsContainer.style.display = "none";
+  quizContainer.style.display = "block";
+  loadQuestion();
+}
+
+function loadQuestion() {
+  if (filteredQuestions.length === 0) {
+    questionNumberElem.textContent = "0";
+    questionTextElem.textContent = "Aucune question disponible pour cette catégorie.";
+    optionsContainer.innerHTML = "";
+    questionFeedback.textContent = "";
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    progressBar.style.width = "0%";
+    progressText.textContent = "0 / 0";
+    categoryElem.textContent = "";
+    return;
+  }
+
+  const q = filteredQuestions[currentQuestionIndex];
+  questionNumberElem.textContent = currentQuestionIndex + 1;
+  questionTextElem.textContent = q.question;
+  categoryElem.textContent = `Niveau : ${q.category}`;
+
+  questionFeedback.className = "question-feedback";
+  questionFeedback.textContent = "";
+  optionsContainer.innerHTML = "";
+
+  nextBtn.disabled = userAnswers[currentQuestionIndex] === null;
+
+  q.options.forEach((optionText, index) => {
+    const optionDiv = document.createElement("div");
+    optionDiv.className = "option";
+    if (userAnswers[currentQuestionIndex] === index) {
+      optionDiv.classList.add("selected");
+    }
+    optionDiv.innerHTML = `
+      <span class="option-letter">${String.fromCharCode(65 + index)}</span>
+      <span class="option-text">${optionText}</span>
+    `;
+    optionDiv.onclick = () => selectOption(index);
+    optionsContainer.appendChild(optionDiv);
+  });
+
+  prevBtn.disabled = currentQuestionIndex === 0;
+  nextBtn.textContent = currentQuestionIndex === filteredQuestions.length - 1 ? "Terminer" : "Suivant";
+
+  const progressPercent = ((currentQuestionIndex + 1) / filteredQuestions.length) * 100;
+  progressBar.style.width = progressPercent + "%";
+  progressText.textContent = `Question ${currentQuestionIndex + 1} / ${filteredQuestions.length}`;
+}
+
+function selectOption(index) {
+  userAnswers[currentQuestionIndex] = index;
+  nextBtn.disabled = false;
+
+  const optionDivs = optionsContainer.querySelectorAll(".option");
+  optionDivs.forEach((opt, idx) => {
+    opt.classList.toggle("selected", idx === index);
+  });
+
+  const q = filteredQuestions[currentQuestionIndex];
+  if (index === q.answer) {
+    questionFeedback.textContent = "✅ Bonne réponse !";
+    questionFeedback.className = "question-feedback show correct";
+  } else {
+    questionFeedback.textContent = `❌ Mauvaise réponse. ${q.explanation}`;
+    questionFeedback.className = "question-feedback show incorrect";
+  }
+}
+
+function nextQuestion() {
+  if (userAnswers[currentQuestionIndex] === null) {
+    alert("Veuillez sélectionner une réponse avant de continuer.");
+    return;
+  }
+
+  if (currentQuestionIndex === filteredQuestions.length - 1) {
+    calculateScore();
+    showResults();
+    return;
+  }
+
+  currentQuestionIndex++;
+  loadQuestion();
+}
+
+function previousQuestion() {
+  if (currentQuestionIndex > 0) {
+    currentQuestionIndex--;
+    loadQuestion();
+  }
+}
+
+function calculateScore() {
+  score = 0;
+  for (let i = 0; i < filteredQuestions.length; i++) {
+    if (userAnswers[i] === filteredQuestions[i].answer) {
+      score++;
+    }
+  }
+}
+
+function showResults() {
+  quizContainer.style.display = "none";
+  resultsContainer.style.display = "block";
+
+  const percent = Math.round((score / filteredQuestions.length) * 100);
+  scorePercentageElem.textContent = percent + "%";
+  scoreFractionElem.textContent = `${score} / ${filteredQuestions.length}`;
+
+  progressBar.style.width = "100%";
+  progressText.textContent = "Quiz terminé";
+}
+
+function restartQuiz() {
+  currentQuestionIndex = 0;
+  score = 0;
+  userAnswers = new Array(filteredQuestions.length).fill(null);
+  resultsContainer.style.display = "none";
+  quizContainer.style.display = "block";
+  loadQuestion();
+}
+
+// Initialisation
+filterCategory("toutes");
+
+  </script>
+</body>
+</html>
